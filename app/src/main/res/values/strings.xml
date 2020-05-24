@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">Weather App</string>
+    <string name="PlaceholderDate">20 April 2012, 20:08 PM</string>
+    <string name="PlaceholderWeather">Clear Sky</string>
+    <string name="Placeholder_TileValue">06:40 AM</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="sunset">Sunset</string>
+    <string name="wind">Wind</string>
+    <string name="pressure">Pressure</string>
+    <string name="humidity">Humidity</string>
+    <string name="created_by">Created By</string>
+    <string name="DeveloperName">Kaiser Desenv</string>
+    <string name="ErrorString">Something went wrong</string>
+    <string name="Placeholder_City">DHAKA, BD</string>
 </resources>
