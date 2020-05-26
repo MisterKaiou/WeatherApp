@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
     var scope = CoroutineScope(Job() + Dispatchers.IO)
 
     val City: String = "3447258"
-    val API: String = "ba60cd5d73ef4117b95a302db8d49907"
     val PERMISSION_ID = 7
 
     override fun onCreate(savedInstanceState: Bundle?) {
