@@ -14,6 +14,7 @@ import android.icu.text.SimpleDateFormat
 import android.location.Location
 import android.os.Looper
 import android.provider.Settings
+import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.*
@@ -30,22 +31,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     var LAT: String = ""
     var LON: String = ""
-    var scope = CoroutineScope(Job() + Dispatchers.IO)
+    var isStartUp: Boolean = true
+    var days = 1
 
-    val City: String = "3447258"
-    val API: String = "ba60cd5d73ef4117b95a302db8d49907"
     val PERMISSION_ID = 7
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        binding.about.setOnClickListener {
-            requestNewLocationData()
-            WeatherTask().execute() }
+        binding.reloadButton.setOnClickListener {
+            getLastLocation()
+            isStartUp = false
+            it.startAnimation(AnimationUtils.loadAnimation(this, R.anim.rotate_around_center_point))
+        }
 
         setContentView(binding.root)
-
         getLastLocation()
     }
 
@@ -53,9 +54,11 @@ class MainActivity : AppCompatActivity() {
         override fun onPreExecute() {
             super.onPreExecute()
             /* Showing the ProgressBar, Making the main design GONE */
-            binding.loader.visibility = View.VISIBLE
-            binding.mainContainer.visibility = View.GONE
-            binding.errorText.visibility = View.GONE
+            if (isStartUp) {
+                binding.loader.visibility = View.VISIBLE
+                binding.mainContainer.visibility = View.GONE
+                binding.errorText.visibility = View.GONE
+            }
         }
 
         override fun doInBackground(vararg params: String?): String? {
@@ -63,7 +66,7 @@ class MainActivity : AppCompatActivity() {
 
             try {
                 response =
-                    URL("https://api.openweathermap.org/data/2.5/weather?lat=$LAT&lon=$LON&appid=$API&units=metric").readText(
+                    URL("https://api.weatherapi.com/v1/forecast.json?key=${APIKey.Key}&q=$LAT,$LON&days=$days").readText(
                         Charsets.UTF_8
                     )
             } catch (e: Exception) {
@@ -78,25 +81,31 @@ class MainActivity : AppCompatActivity() {
             try {
                 /*Extracting JSON returns from the API*/
                 val jsonObj = JSONObject(result)
-                val main = jsonObj.getJSONObject("main")
-                val weather = jsonObj.getJSONArray("weather").getJSONObject(0)
-                val wind = jsonObj.getJSONObject("wind")
-                val sys = jsonObj.getJSONObject("sys")
+                val location = jsonObj.getJSONObject("location")
+                val current = jsonObj.getJSONObject("current")
+                val condition = current.getJSONObject("condition")
+                val forecast =
+                    jsonObj.getJSONObject("forecast").getJSONArray("forecastday").getJSONObject(0)
+                val forecastToday = forecast.getJSONObject("day")
+                val forecastAstro = forecast.getJSONObject("astro")
 
-                val updatedAt = jsonObj.getLong("dt")
-                val updatedAtText = "Updated at: " + formatTicksToDate(updatedAt, "dd/MM/yyyy hh:mm a",Locale.ENGLISH)
-                val temp = main.getDouble("temp").toInt().toString() + "ºC"
-                val tempMin = "Min Temp: " + main.getDouble("temp_min").toInt().toString() + "ºC"
-                val tempMax = "Max Temp: " + main.getDouble("temp_max").toInt().toString() + "ºC"
-                val pressure = main.getString("pressure")
-                val humidity = main.getString("humidity")
-
-                val sunrise: Long = sys.getLong("sunrise")
-                val sunset: Long = sys.getLong("sunset")
-                val windSpeed = wind.getString("speed")
-                val weatherDescription = weather.getString("description")
-
-                val address = jsonObj.getString("name") + ", " + sys.getString("country")
+                val address = location.getString("name") + ", " + location.getString("country")
+                val updatedAtText = "Update At: " + formatTicksToDate(
+                    current.getLong("last_updated_epoch"),
+                    "dd/MM/yyyy hh:mm a",
+                    Locale.ENGLISH
+                )
+                val weatherDescription = condition.getString("text")
+                val temp = current.getDouble("temp_c").toInt().toString() + "ºC"
+                val tempMin =
+                    "Min Temp: " + forecastToday.getDouble("mintemp_c").toInt().toString() + "ºC"
+                val tempMax =
+                    "Max Temp: " + forecastToday.getDouble("maxtemp_c").toInt().toString() + "ºC"
+                val sunset = forecastAstro.getString("sunset")
+                val sunrise = forecastAstro.getString("sunrise")
+                val windSpeed = current.getDouble("wind_kph").toString() + " Km/h"
+                val pressure = current.getString("pressure_mb").toDouble().toInt().toString()
+                val humidity = current.getString("humidity")
 
                 /* Populating extracted data */
                 binding.address.text = address
@@ -105,8 +114,8 @@ class MainActivity : AppCompatActivity() {
                 binding.temp.text = temp
                 binding.tempMin.text = tempMin
                 binding.tempMax.text = tempMax
-                binding.sunset.text = formatTicksToDate(sunset, "hh:mm a",Locale.ENGLISH)
-                binding.sunrise.text = formatTicksToDate(sunrise, "hh:mm a", Locale.ENGLISH)
+                binding.sunset.text = sunset
+                binding.sunrise.text = sunrise
                 binding.wind.text = windSpeed
                 binding.pressure.text = pressure
                 binding.humidity.text = humidity
@@ -121,27 +130,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun formatTicksToDate(timeTicks: Long, format: String, locale: Locale) : String {
+    fun formatTicksToDate(timeTicks: Long, format: String, locale: Locale): String {
         return SimpleDateFormat(format, locale).format(
-            Date(timeTicks * 1000))
+            Date(timeTicks * 1000)
+        )
     }
 
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
         if (checkPermissions()) {
             if (isLocationEnabled()) {
-
-                mFusedLocationClient.lastLocation.addOnCompleteListener(this) { task ->
-                    var location: Location? = task.result
-                    if (location == null) {
-                        requestNewLocationData()
-                    } else {
-                        LAT = location.latitude.toString()
-                        LON = location.longitude.toString()
-
-                        WeatherTask().execute()
-                    }
-                }
+                getCoordinates()
             } else {
                 Toast.makeText(this, "Turn on location", Toast.LENGTH_LONG).show()
                 val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
@@ -149,6 +148,20 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             requestPermissions()
+        }
+    }
+
+    private fun getCoordinates() {
+        mFusedLocationClient.lastLocation.addOnCompleteListener(this) { task ->
+            var location: Location? = task.result
+            if (location == null) {
+                requestNewLocationData()
+            } else {
+                LAT = location.latitude.toString()
+                LON = location.longitude.toString()
+
+                WeatherTask().execute()
+            }
         }
     }
 
@@ -212,9 +225,11 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<String>,
         grantResults: IntArray
     ) {
-        if (requestCode == PERMISSION_ID) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                return
+        when (requestCode) {
+            PERMISSION_ID -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    return
+                }
             }
         }
     }
