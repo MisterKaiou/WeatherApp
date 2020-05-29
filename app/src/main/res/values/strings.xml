@@ -12,4 +12,7 @@
     <string name="DeveloperName">Kaiser Desenv</string>
     <string name="ErrorString">Something went wrong</string>
     <string name="Placeholder_City">DHAKA, BD</string>
+
+    <string name="LocationError_Permission">Permission not granted</string>
+    <string name="Location_PermissionDeniedRationale">This app need permission to access your current to properly work</string>
 </resources>
