@@ -27,9 +27,7 @@ class LocationHelper(
 	}
 	
 	private var context: Context = activity.baseContext
-	//private var mFusedLocationClient: FusedLocationProviderClient =
-	//		LocationServices.getFusedLocationProviderClient(activity)
-	
+
 	fun getLastLocation(): Boolean {
 		if (checkPermissions()) {
 			return if (isLocationEnabled()) {

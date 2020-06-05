@@ -14,8 +14,18 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes SourceFile,LineNumberTable
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.SerializationKt
+-keep,includedescriptorclasses class com.kaiser.weatherapp.**$$serializer { *; } # <-- change package name to your app's
+-keepclassmembers class com.kaiser.weatherapp.** { # <-- change package name to your app's
+    *** Companion;
+}
+-keepclasseswithmembers class com.kaiser.weatherapp.** { # <-- change package name to your app's
+    kotlinx.serialization.KSerializer serializer(...);
+}
