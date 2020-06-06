@@ -13,5 +13,4 @@ data class LocationModel(
     @SerialName("tz_id") val timeZone: String,
     @SerialName("localtime_epoch") val localTimeEpoch: Long,
     @SerialName("localtime") val localTime: String
-) {
-}
+)

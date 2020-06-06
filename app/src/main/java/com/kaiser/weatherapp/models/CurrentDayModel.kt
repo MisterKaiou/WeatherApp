@@ -28,5 +28,4 @@ data class CurrentDayModel(
     @SerialName("gust_mph") val gustMph: Double,
     @SerialName("gust_kph") val gustKph: Double,
     val uv: Double
-) {
-}
+)

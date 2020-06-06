@@ -5,13 +5,16 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.animation.AnimationUtils
+import android.widget.LinearLayout
+import android.widget.Space
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.view.*
+import androidx.core.view.isVisible
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.kaiser.weatherapp.R
 import com.kaiser.weatherapp.databinding.ActivityMainBinding
+import com.kaiser.weatherapp.databinding.ForecastNodeBinding
 import com.kaiser.weatherapp.extensions.*
 import com.kaiser.weatherapp.helpers.LocationHelper
 import com.kaiser.weatherapp.helpers.LocationHelper.Companion.LAT
@@ -22,12 +25,12 @@ import com.kaiser.weatherapp.models.HourModel
 import com.kaiser.weatherapp.tasks.WeatherTask.Companion.Tasks.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-import org.json.JSONObject
 import java.lang.StringBuilder
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var nodeBind: ForecastNodeBinding
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private lateinit var helper: LocationHelper
 
@@ -35,8 +38,8 @@ class MainActivity : AppCompatActivity() {
     private val KEY_WEATHER_DATA = "key_weather_data"
     private val json = Json(JsonConfiguration.Stable.copy())
 
-    var isStartUp: Boolean = true
-    var PERMISSION_ID = 7
+    val PERMISSION_ID = 7
+    var isStartUp: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         )
         if (!savedData.isNullOrEmpty()) {
             val data = savedData.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            if (!data.isNullOrEmpty()) {
+            if (!data.isNullOrEmpty() && data.size == 3) {
                 LAT = data[0]
                 LON = data[1]
                 lastUpdate = data[2]
@@ -58,8 +61,21 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         helper = LocationHelper(this, mFusedLocationClient)
         binding.reloadButton.setOnClickListener {
-            if (helper.getLastLocation()) {
-                populateScreen(TodayResume(this).execute().get())
+            try {
+                if (helper.getLastLocation()) {
+                    populateHorizontalScrollView(
+                        json.parse(
+                            HistoryModel.serializer(),
+                            TodayResume(this).execute().get()
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                when (e.message) {
+                    R.string.LocationError_Permission.toString() -> {
+                        requestPermissions()
+                    }
+                }
             }
             it.startAnimation(
                 AnimationUtils.loadAnimation(
@@ -68,7 +84,6 @@ class MainActivity : AppCompatActivity() {
                 )
             )
         }
-        setContentView(binding.root)
 
         /* Showing the ProgressBar, Making the main design GONE */
         if (isStartUp) {
@@ -78,6 +93,7 @@ class MainActivity : AppCompatActivity() {
             isStartUp = false
         }
 
+        setContentView(binding.root)
     }
 
     override fun onStart() {
@@ -127,6 +143,34 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        for (hour in validHour) {
+            createViewForHour(hour)
+        }
+
+        val thisLocation = model.location
+        val thisDay = model.forecast.forecastDay[0]
+        val thisDayOverall = thisDay.day
+        val thisHour = thisDay.hour[0]
+
+        binding.temp.text = getString(R.string.hourTempC, thisHour.tempCelsius)
+        binding.status.text = thisHour.condition.text
+        binding.updatedAt.text = getString(R.string.lastUpdated, thisLocation.localTimeEpoch.formatToDate("dd MMMM yyyy kk:mm"))
+        binding.address.text = thisLocation.name
+        binding.tempMin.text = getString(R.string.dayTempC, thisDayOverall.minTempCelsius)
+        binding.tempMax.text = getString(R.string.dayTempC, thisDayOverall.maxTempCelsius)
+        binding.horizontalScroll.invalidate()
+    }
+
+    private fun createViewForHour(hour: HourModel) {
+        nodeBind = ForecastNodeBinding.inflate(layoutInflater)
+        nodeBind.nodeHour.text = hour.timeEpoch.formatToDate("kk:mm ")
+        nodeBind.nodeTemperature.text = getString(R.string.hourTempC, hour.tempCelsius)
+        val space = Space(this)
+        val params = LinearLayout.LayoutParams(30, LinearLayout.LayoutParams.WRAP_CONTENT)
+        space.layoutParams = params
+        binding.TodayHourlyForecast.addView(space)
+        binding.TodayHourlyForecast.addView(nodeBind.root)
     }
 
     override fun onDestroy() {
@@ -161,52 +205,5 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun populateScreen(result: String) {
-        val jsonObj = JSONObject(result)
-        val location = jsonObj.getJSONObject("location")
-        val current = jsonObj.getJSONObject("current")
-        val condition = current.getJSONObject("condition")
-        val forecast =
-            jsonObj.getJSONObject("forecast").getJSONArray("forecastday")
-                .getJSONObject(0)
-        val forecastToday = forecast.getJSONObject("day")
-        val forecastAstro = forecast.getJSONObject("astro")
-
-        val address = location.getString("name") + ", " + location.getString("country")
-        val updatetAt = current.getLong("last_updated_epoch")
-        val updatedAtText = "Update At: " + updatetAt.formatToDate()
-        lastUpdate = updatetAt.toString()
-        val weatherDescription = condition.getString("text")
-        val temp = current.getDouble("temp_c").toInt().toString() + "ºC"
-        val tempMin =
-            "Min: " + forecastToday.getDouble("mintemp_c").toInt()
-                .toString() + "ºC"
-        val tempMax =
-            "Max: " + forecastToday.getDouble("maxtemp_c").toInt()
-                .toString() + "ºC"
-        val sunset = forecastAstro.getString("sunset")
-        val sunrise = forecastAstro.getString("sunrise")
-        val windSpeed = current.getDouble("wind_kph").toString() + " Km/h"
-        val pressure = current.getString("pressure_mb").toDouble().toInt().toString()
-        val humidity = current.getString("humidity")
-
-        /* Populating extracted data */
-        binding.address.text = address
-        binding.updatedAt.text = updatedAtText
-        binding.status.text = weatherDescription.capitalize()
-        binding.temp.text = temp
-        binding.tempMin.text = tempMin
-        binding.tempMax.text = tempMax
-        /*binding.sunset.text = sunset
-        binding.sunrise.text = sunrise
-        binding.wind.text = windSpeed
-        binding.pressure.text = pressure
-        binding.humidity.text = humidity
-*/
-        /* Views populated, Hiding loader, showing main design */
-        binding.loader.isVisible = false
-        binding.mainContainer.isVisible = true
     }
 }

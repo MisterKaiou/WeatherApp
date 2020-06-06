@@ -10,6 +10,4 @@ data class ForecastDayModel(
     val day: DayModel,
     val astro: AstroModel,
     val hour: List<HourModel>
-) {
-
-}
+)

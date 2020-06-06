@@ -37,5 +37,4 @@ data class HourModel(
     @SerialName("chance_of_snow") val chanceOfSnow: Int,
     @SerialName("gust_mph") val gustMph: Double,
     @SerialName("gust_kph") val gustKph: Double
-) {
-}
+)

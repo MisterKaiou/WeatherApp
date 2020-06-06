@@ -24,5 +24,4 @@ data class DayModel(
     @SerialName("daily_chance_of_snow") val dailyChanceOfSnow: Int = 0,
     val condition: ConditionModel,
     val uv: Double
-) {
-}
+)

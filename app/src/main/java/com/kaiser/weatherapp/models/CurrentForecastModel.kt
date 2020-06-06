@@ -10,5 +10,4 @@ data class CurrentForecastModel(
     @SerialName("current") val currentDay: CurrentDayModel,
     val forecast: ForecastModel
     //val alert: JsonInput? = null
-) {
-}
+)

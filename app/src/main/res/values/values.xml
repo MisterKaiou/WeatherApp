@@ -2,7 +2,7 @@
 <resources>
     <item name="tilesValue" type="dimen">14sp</item>
     <item name="tilesDescription" type="dimen">12sp</item>
-    <item name="tilesImageSize" type="dimen">25dp</item>
-    <item name="tilesSpacing" type="dimen">5dp</item>
+    <item name="ImageSize" type="dimen">30dp</item>
+    <item name="tilesSpacing" type="dimen">15dp</item>
     <item name="tilesImageTint" type="color">#FFFFFF</item>
 </resources>

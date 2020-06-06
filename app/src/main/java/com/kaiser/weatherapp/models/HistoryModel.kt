@@ -6,5 +6,4 @@ import kotlinx.serialization.Serializable
 data class HistoryModel(
     val location: LocationModel,
     val forecast: ForecastModel
-) {
-}
+)
