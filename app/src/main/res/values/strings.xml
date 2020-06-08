@@ -17,7 +17,7 @@
     <string name="Placeholder_City">DHAKA, BD</string>
 
     <string name="LocationError_Permission">Permission not granted</string>
-    <string name="Location_PermissionDeniedRationale">This app need permission to access your current to properly work</string>
+    <string name="Location_PermissionDeniedRationale">This app need permission to access your current location to properly operate</string>
     <string name="CurrentWeatherIcon">Current Weather Icon</string>
     <string name="reload_button">Reload Button</string>
 
