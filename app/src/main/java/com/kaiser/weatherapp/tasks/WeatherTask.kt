@@ -22,7 +22,7 @@ class WeatherTask(override val coroutineContext: CoroutineContext) : CoroutineSc
     /**
      * Calls History modality of the API, returns the data per hour of two days
      * @param queue The queue to add this request
-     * @param locale The Locale to be when parsing dates
+     * @param locale The Locale to use when parsing dates
      * @param functionToCall The function to call when request is completed, must accept a string
      * @return The JSON response
      */
@@ -41,4 +41,23 @@ class WeatherTask(override val coroutineContext: CoroutineContext) : CoroutineSc
 
         queue.add(stringResponse)
     }
+
+    /**
+     * Calls forecast modality of the API, returns the data per hour of two days
+     * @param queue The queue to add this request
+     * @param functionToCall The function to call when request is completed, must accept a string
+     * @return The JSON response
+     */
+    suspend fun dailyResume(queue: RequestQueue, functionToCall: (String) -> Unit)
+            : String = suspendCoroutine { cont ->
+        val url =
+            "https://api.weatherapi.com/v1/forecast.json?key=${APIKey.Key}&q=${LocationHelper.LAT},${LocationHelper.LON}&days=7"
+
+        val stringResponse = StringRequest(Request.Method.GET, url, Response.Listener { result ->
+            functionToCall(result)
+        }, Response.ErrorListener { cont.resume("") })
+
+        queue.add(stringResponse)
+    }
+
 }

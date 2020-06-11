@@ -19,14 +19,14 @@ import com.android.volley.toolbox.Volley
 import com.kaiser.weatherapp.R
 import com.kaiser.weatherapp.databinding.ActivityMainBinding
 import com.kaiser.weatherapp.databinding.ForecastNodeBinding
+import com.kaiser.weatherapp.databinding.NextDaysNodeBinding
 import com.kaiser.weatherapp.extensions.formatToDate
 import com.kaiser.weatherapp.helpers.LocationHelper
 import com.kaiser.weatherapp.helpers.LocationHelper.Companion.LAT
 import com.kaiser.weatherapp.helpers.LocationHelper.Companion.LON
 import com.kaiser.weatherapp.helpers.LocationHelper.Companion.lastUpdate
 import com.kaiser.weatherapp.helpers.LocationHelperStatus
-import com.kaiser.weatherapp.models.HistoryModel
-import com.kaiser.weatherapp.models.HourModel
+import com.kaiser.weatherapp.models.*
 import com.kaiser.weatherapp.tasks.WeatherTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +37,7 @@ import kotlinx.serialization.json.JsonConfiguration
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.roundToInt
 
 /**
  * Application starting point
@@ -58,7 +59,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     /**
      * Binds to the horizontal Scroll View with the details per hour
      */
-    private lateinit var horizontalViewBind: ForecastNodeBinding
 
     /**
      * Class that manages all actions involving user Location
@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     /**
      * JSON parser, used on serialization/deserialization
      */
-    private val json = Json(JsonConfiguration.Stable.copy())
+    private val json = Json(JsonConfiguration.Stable.copy(isLenient = true, ignoreUnknownKeys = true))
 
     /**
      * permission id used in all location requests if needed
@@ -204,7 +204,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 requestPermissions()
             }
             LocationHelperStatus.OK -> {
-                launch { task.todayResume(queue, defaultLocale, ::updateDetails) }
+                launch {
+                    task.todayResume(queue, defaultLocale, ::updateTodayDetails)
+                }
+                launch {
+                    task.dailyResume(queue, ::updateDailyResume)
+                }
             }
         }
     }
@@ -223,12 +228,38 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         }
     }
 
+    private fun updateDailyResume(result: String) {
+        val forecastModel = json.parse(DailyForecastModel.serializer(), result)
+
+        activityBinding.NextDaysForecast.removeAllViews()
+
+        for (day in forecastModel.forecast.forecastDay) {
+            createViewForDay(day)
+        }
+    }
+
+    private fun createViewForDay(forecastDay: ForecastDayModel) {
+        val iconId: Int
+        val iconName = forecastDay.day.condition.icon.substringAfterLast('/').substringBeforeLast('.')
+        val nextDaysNodeBinding = NextDaysNodeBinding.inflate(layoutInflater)
+
+        nextDaysNodeBinding.nextDaysDesc.text = forecastDay.day.condition.text
+        nextDaysNodeBinding.nextDaysFullDay.text = forecastDay.dateEpoch.formatToDate("EEEE - MMM dd")
+        nextDaysNodeBinding.nextDaysMin.text = forecastDay.day.minTempCelsius.roundToInt().toString()
+        nextDaysNodeBinding.nextDaysMax.text = forecastDay.day.maxTempCelsius.roundToInt().toString()
+
+        iconId = resources.getIdentifier("day_$iconName", "drawable", packageName)
+        nextDaysNodeBinding.nextDaysIcon.setImageResource(iconId)
+
+        activityBinding.NextDaysForecast.addView(nextDaysNodeBinding.root)
+    }
+
     /**
      * Called when the data should be updated on the UI
      * @param result The string to be parsed from JSON
      */
-    private fun updateDetails(result: String) {
-        val historyModel: HistoryModel = json.parse(HistoryModel.serializer(), result)
+    private fun updateTodayDetails(result: String) {
+        val historyModel = json.parse(HistoryModel.serializer(), result)
         val validHour = mutableListOf<HourModel>()
         val epochAtExecution = System.currentTimeMillis() / 1000
         val hourBefore = epochAtExecution - 3540
@@ -257,16 +288,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         activityBinding.status.text = thisHour.condition.text
         activityBinding.updatedAt.text = getString(
             R.string.lastUpdated,
-            thisLocation.localTimeEpoch.formatToDate("dd MMMM yyyy kk:mm")
+            thisLocation.localTimeEpoch.formatToDate("dd MMMM yyyy kk:mm", defaultLocale)
         )
         activityBinding.address.text = thisLocation.name
         activityBinding.tempMin.text = getString(R.string.dayTempC, thisDayOverall.minTempCelsius)
         activityBinding.tempMax.text = getString(R.string.dayTempC, thisDayOverall.maxTempCelsius)
         activityBinding.ScrollViewHeader.text =
-            getString(R.string.dayOfWeek, SimpleDateFormat("EEEE", defaultLocale).format(Date()))
+            getString(
+                R.string.dayOfWeek,
+                SimpleDateFormat("EEEE", defaultLocale).format(Date())
+            ).capitalize()
 
         lastUpdate = thisLocation.localTimeEpoch.toString()
-        showDetails(UIVisibilityEnum.Show)
     }
 
     /**
@@ -300,14 +333,27 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
      * @param hour This HourModel to take the data from
      */
     private fun createViewForHour(hour: HourModel) {
-        horizontalViewBind = ForecastNodeBinding.inflate(layoutInflater)
-        horizontalViewBind.nodeHour.text = hour.timeEpoch.formatToDate("kk:mm ")
+        val iconId: Int
+        val iconName = hour.condition.icon.substringAfterLast('/').substringBeforeLast('.')
+        val horizontalViewBind = ForecastNodeBinding.inflate(layoutInflater)
+
+        horizontalViewBind.nodeHour.text = hour.timeEpoch.formatToDate("kk:mm ", defaultLocale)
         horizontalViewBind.nodeTemperature.text = getString(R.string.hourTempC, hour.tempCelsius)
         val space = Space(this)
         val params = LinearLayout.LayoutParams(30, LinearLayout.LayoutParams.WRAP_CONTENT)
         space.layoutParams = params
+
+        val iconPrefix = if (hour.isDay == 0) {
+            "night_"
+        } else {
+            "day_"
+        }
+
+        iconId = resources.getIdentifier(iconPrefix + iconName, "drawable", packageName)
+        horizontalViewBind.nodeIcon.setImageResource(iconId)
         activityBinding.TodayHourlyForecast.addView(space)
         activityBinding.TodayHourlyForecast.addView(horizontalViewBind.root)
+
     }
 
     /**

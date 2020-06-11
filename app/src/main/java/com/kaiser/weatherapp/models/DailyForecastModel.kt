@@ -1,11 +1,10 @@
 package com.kaiser.weatherapp.models
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class CurrentForecastModel(
+data class DailyForecastModel(
     val location: LocationModel,
-    @SerialName("current") val currentDay: CurrentDayModel,
+    val current: CurrentDayModel,
     val forecast: ForecastModel
 )

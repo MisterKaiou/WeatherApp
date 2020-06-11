@@ -9,5 +9,5 @@ data class ForecastDayModel(
     @SerialName("date_epoch") val dateEpoch: Long,
     val day: DayModel,
     val astro: AstroModel,
-    val hour: List<HourModel>
+    val hour: MutableList<HourModel> = mutableListOf()
 )
