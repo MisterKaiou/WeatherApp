@@ -28,10 +28,7 @@ import com.kaiser.weatherapp.helpers.LocationHelper.Companion.lastUpdate
 import com.kaiser.weatherapp.helpers.LocationHelperStatus
 import com.kaiser.weatherapp.models.*
 import com.kaiser.weatherapp.tasks.WeatherTask
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import java.text.SimpleDateFormat
@@ -98,7 +95,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     /**
      * JSON parser, used on serialization/deserialization
      */
-    private val json = Json(JsonConfiguration.Stable.copy(isLenient = true, ignoreUnknownKeys = true))
+    private val json =
+        Json(JsonConfiguration.Stable.copy(isLenient = true, ignoreUnknownKeys = true))
 
     /**
      * permission id used in all location requests if needed
@@ -210,6 +208,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 launch {
                     task.dailyResume(queue, ::updateDailyResume)
                 }
+                launch {
+                    showDetails(UIVisibilityEnum.Show)
+                }
             }
         }
     }
@@ -230,23 +231,31 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
     private fun updateDailyResume(result: String) {
         val forecastModel = json.parse(DailyForecastModel.serializer(), result)
+        val validDays = forecastModel.forecast.forecastDay.drop(1)
 
         activityBinding.NextDaysForecast.removeAllViews()
 
-        for (day in forecastModel.forecast.forecastDay) {
+        for (day in validDays) {
             createViewForDay(day)
         }
     }
 
     private fun createViewForDay(forecastDay: ForecastDayModel) {
         val iconId: Int
-        val iconName = forecastDay.day.condition.icon.substringAfterLast('/').substringBeforeLast('.')
+        val iconName =
+            forecastDay.day.condition.icon.substringAfterLast('/').substringBeforeLast('.')
         val nextDaysNodeBinding = NextDaysNodeBinding.inflate(layoutInflater)
+        val parsedDate =
+            SimpleDateFormat("yyyy-MM-dd", defaultLocale).parse(forecastDay.date)!!.run {
+                SimpleDateFormat("EEEE - MMM dd", defaultLocale).format(this)
+            }
 
         nextDaysNodeBinding.nextDaysDesc.text = forecastDay.day.condition.text
-        nextDaysNodeBinding.nextDaysFullDay.text = forecastDay.dateEpoch.formatToDate("EEEE - MMM dd")
-        nextDaysNodeBinding.nextDaysMin.text = forecastDay.day.minTempCelsius.roundToInt().toString()
-        nextDaysNodeBinding.nextDaysMax.text = forecastDay.day.maxTempCelsius.roundToInt().toString()
+        nextDaysNodeBinding.nextDaysFullDay.text = parsedDate
+        nextDaysNodeBinding.nextDaysMin.text =
+            forecastDay.day.minTempCelsius.roundToInt().toString()
+        nextDaysNodeBinding.nextDaysMax.text =
+            forecastDay.day.maxTempCelsius.roundToInt().toString()
 
         iconId = resources.getIdentifier("day_$iconName", "drawable", packageName)
         nextDaysNodeBinding.nextDaysIcon.setImageResource(iconId)

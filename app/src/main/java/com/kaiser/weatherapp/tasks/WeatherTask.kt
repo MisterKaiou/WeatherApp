@@ -51,7 +51,7 @@ class WeatherTask(override val coroutineContext: CoroutineContext) : CoroutineSc
     suspend fun dailyResume(queue: RequestQueue, functionToCall: (String) -> Unit)
             : String = suspendCoroutine { cont ->
         val url =
-            "https://api.weatherapi.com/v1/forecast.json?key=${APIKey.Key}&q=${LocationHelper.LAT},${LocationHelper.LON}&days=7"
+            "https://api.weatherapi.com/v1/forecast.json?key=${APIKey.Key}&q=${LocationHelper.LAT},${LocationHelper.LON}&days=8"
 
         val stringResponse = StringRequest(Request.Method.GET, url, Response.Listener { result ->
             functionToCall(result)
