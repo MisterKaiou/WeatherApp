@@ -5,4 +5,5 @@
     <item name="ImageSize" type="dimen">40dp</item>
     <item name="tilesSpacing" type="dimen">10dp</item>
     <item name="tilesImageTint" type="color">#FFFFFF</item>
+    <item name="minTempColor" type="color">#BDBDBD</item>
 </resources>
