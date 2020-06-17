@@ -76,6 +76,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     private lateinit var job: Job
 
     /**
+     * IO Context attached to the main job
+     * Use on network request and things as such
+     */
+    private val ioContext: CoroutineContext
+        get() = Dispatchers.IO + job
+
+    /**
      * Class responsible for all the calls to the API.
      * Receives this coroutine context so everything starts under the same scope
      */
@@ -193,7 +200,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     /**
      * Starts the execution of weather tasks. Prompts the user for location use. Request the user for access to location services
      */
-    private fun getWeatherData() {
+    private fun getWeatherData() = launch {
         when (helper.getLastLocation()) {
             LocationHelperStatus.LocationUnabled -> {
                 promptEnableLocation()
@@ -202,15 +209,18 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 requestPermissions()
             }
             LocationHelperStatus.OK -> {
-                launch {
+                val deferredTodayResume = async(ioContext) {
                     task.todayResume(queue, defaultLocale, ::updateTodayDetails)
                 }
-                launch {
+
+                val deferredDailyResume = async(ioContext) {
                     task.dailyResume(queue, ::updateDailyResume)
                 }
-                launch {
-                    showDetails(UIVisibilityEnum.Show)
-                }
+
+                updateTodayDetails(deferredTodayResume.await())
+                updateDailyResume(deferredDailyResume.await())
+
+                showDetails(UIVisibilityEnum.Show)
             }
         }
     }

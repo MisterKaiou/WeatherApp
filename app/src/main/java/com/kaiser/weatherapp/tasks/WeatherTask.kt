@@ -36,7 +36,7 @@ class WeatherTask(override val coroutineContext: CoroutineContext) : CoroutineSc
             "https://api.weatherapi.com/v1/history.json?key=${APIKey.Key}&q=${LocationHelper.LAT},${LocationHelper.LON}&dt=${startDate}&end_dt=${endDate}"
 
         val stringResponse = StringRequest(Request.Method.GET, url, Response.Listener { result ->
-            functionToCall(result)
+            cont.resume(result)
         }, Response.ErrorListener { cont.resume("") })
 
         queue.add(stringResponse)
@@ -54,7 +54,7 @@ class WeatherTask(override val coroutineContext: CoroutineContext) : CoroutineSc
             "https://api.weatherapi.com/v1/forecast.json?key=${APIKey.Key}&q=${LocationHelper.LAT},${LocationHelper.LON}&days=8"
 
         val stringResponse = StringRequest(Request.Method.GET, url, Response.Listener { result ->
-            functionToCall(result)
+            cont.resume(result)
         }, Response.ErrorListener { cont.resume("") })
 
         queue.add(stringResponse)
