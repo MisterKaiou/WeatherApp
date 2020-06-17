@@ -5,4 +5,5 @@
     <color name="colorAccent">#03DAC5</color>
     <color name="tilesBackground">#1AF1EBF1</color>
     <color name="HorizontalScrollColor">#CCB1ADAD</color>
+    <color name="app_launcher_background">#80CBC4</color>
 </resources>
