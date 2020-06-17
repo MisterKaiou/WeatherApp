@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         super.onCreate(savedInstanceState)
         job = Job()
         queue = Volley.newRequestQueue(this)
-        task = WeatherTask(coroutineContext)
+        task = WeatherTask(coroutineContext, defaultLocale)
         activityBinding = ActivityMainBinding.inflate(layoutInflater)
         helper = LocationHelper(this)
 
@@ -209,18 +209,36 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 requestPermissions()
             }
             LocationHelperStatus.OK -> {
+                var exception: Throwable? = null
+                var resultTodayResume = ""
+                var resultDailyResume = ""
+
                 val deferredTodayResume = async(ioContext) {
-                    task.todayResume(queue, defaultLocale, ::updateTodayDetails)
+                    task.todayResume(queue)
                 }
 
                 val deferredDailyResume = async(ioContext) {
-                    task.dailyResume(queue, ::updateDailyResume)
+                    task.dailyResume(queue)
                 }
 
-                updateTodayDetails(deferredTodayResume.await())
-                updateDailyResume(deferredDailyResume.await())
+                try {
+                    resultTodayResume = deferredTodayResume.await()
+                    resultDailyResume = deferredDailyResume.await()
 
-                showDetails(UIVisibilityEnum.Show)
+                } catch (ex: Throwable) {
+                    exception = ex
+                    activityBinding.errorText.text = getString(R.string.Network_RequestFailed)
+                }
+                finally {
+                    if (exception != null) {
+                        showDetails(UIVisibilityEnum.ShowError)
+                    }
+                    else {
+                        updateTodayDetails(resultTodayResume)
+                        updateDailyResume(resultDailyResume)
+                        showDetails(UIVisibilityEnum.Show)
+                    }
+                }
             }
         }
     }
@@ -229,13 +247,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
      * Prompts the user to turn on location
      */
     private fun promptEnableLocation() {
+        Toast.makeText(this, "Turn on location", Toast.LENGTH_LONG).show()
+
         if (!hasUserBeenRedirected) {
-            Toast.makeText(this, "Turn on location", Toast.LENGTH_LONG).show()
             val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
             ContextCompat.startActivity(this, intent, null)
             hasUserBeenRedirected = true
-        } else {
-            showDetails(UIVisibilityEnum.ShowError)
         }
     }
 
@@ -261,11 +278,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
 
         nextDaysNodeBinding.nextDaysDesc.text = forecastDay.day.condition.text
-        nextDaysNodeBinding.nextDaysFullDay.text = parsedDate
-        nextDaysNodeBinding.nextDaysMin.text =
-            forecastDay.day.minTempCelsius.roundToInt().toString()
-        nextDaysNodeBinding.nextDaysMax.text =
-            forecastDay.day.maxTempCelsius.roundToInt().toString()
+        nextDaysNodeBinding.nextDaysFullDay.text = parsedDate.capitalize()
+        nextDaysNodeBinding.nextDaysMin.text = getString(R.string.temp, forecastDay.day.minTempCelsius.roundToInt())
+        nextDaysNodeBinding.nextDaysMax.text = getString(R.string.temp, forecastDay.day.maxTempCelsius.roundToInt())
 
         iconId = resources.getIdentifier("day_$iconName", "drawable", packageName)
         nextDaysNodeBinding.nextDaysIcon.setImageResource(iconId)
@@ -303,15 +318,15 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         val thisDayOverall = thisDay.day
         val thisHour = thisDay.hour[0]
 
-        activityBinding.temp.text = getString(R.string.hourTempC, thisHour.tempCelsius)
+        activityBinding.temp.text = getString(R.string.tempC, thisHour.tempCelsius.roundToInt())
         activityBinding.status.text = thisHour.condition.text
         activityBinding.updatedAt.text = getString(
             R.string.lastUpdated,
             thisLocation.localTimeEpoch.formatToDate("dd MMMM yyyy kk:mm", defaultLocale)
         )
         activityBinding.address.text = thisLocation.name
-        activityBinding.tempMin.text = getString(R.string.dayTempC, thisDayOverall.minTempCelsius)
-        activityBinding.tempMax.text = getString(R.string.dayTempC, thisDayOverall.maxTempCelsius)
+        activityBinding.tempMin.text = getString(R.string.temp, thisDayOverall.minTempCelsius.roundToInt())
+        activityBinding.tempMax.text = getString(R.string.temp, thisDayOverall.maxTempCelsius.roundToInt())
         activityBinding.ScrollViewHeader.text =
             getString(
                 R.string.dayOfWeek,
@@ -340,8 +355,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             UIVisibilityEnum.ShowError -> {
                 activityBinding.loader.isVisible = false
                 activityBinding.mainContainer.isVisible = false
-                activityBinding.errorText.text =
-                    getText(R.string.Location_PermissionDeniedRationale)
                 activityBinding.errorText.isVisible = true
             }
         }
@@ -357,9 +370,9 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
         val horizontalViewBind = ForecastNodeBinding.inflate(layoutInflater)
 
         horizontalViewBind.nodeHour.text = hour.timeEpoch.formatToDate("kk:mm ", defaultLocale)
-        horizontalViewBind.nodeTemperature.text = getString(R.string.hourTempC, hour.tempCelsius)
+        horizontalViewBind.nodeTemperature.text = getString(R.string.temp, hour.tempCelsius.roundToInt())
         val space = Space(this)
-        val params = LinearLayout.LayoutParams(30, LinearLayout.LayoutParams.WRAP_CONTENT)
+        val params = LinearLayout.LayoutParams(80, LinearLayout.LayoutParams.WRAP_CONTENT)
         space.layoutParams = params
 
         val iconPrefix = if (hour.isDay == 0) {
@@ -397,6 +410,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                     getWeatherData()
                     return
                 } else if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_DENIED) {
+                    activityBinding.errorText.text =
+                        getText(R.string.Location_PermissionDeniedRationale)
                     showDetails(UIVisibilityEnum.ShowError)
                 }
             }

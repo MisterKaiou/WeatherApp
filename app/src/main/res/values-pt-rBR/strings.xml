@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Weather App</string>
+    <string name="ErrorString">Algo deu errado</string>
+    <string name="LocationError_Permission">Permissão não concedida</string>
+    <string name="Location_PermissionDeniedRationale">Este aplicativo precisa de permissão para acessar sua localização atual para funcionar corretamente</string>
+    <string name="Network_RequestFailed">Pedido na Network falhou</string>
+    <string name="CurrentWeatherIcon">ícone do clima atual</string>
+    <string name="reload_button">Botão para recarregar</string>
+    <string name="lastUpdated">"Última vez atualizado: %1$s "</string>
+    <string name="dayOfWeek">%1$s - Hoje</string>
+</resources>
